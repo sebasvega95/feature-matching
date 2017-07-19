@@ -1,6 +1,7 @@
 #!env/bin/python
 import cv2
 import matplotlib.pyplot as plt
+import triang2vec
 from draw import draw_triangulation
 from features import get_features, get_triangulation
 
@@ -18,6 +19,9 @@ if __name__ == '__main__':
     print('Calculating Triangulation')
     ref_triangulation = get_triangulation(ref_kp)
     query_triangulation = get_triangulation(query_kp)
+
+    knn_train = triang2vec.asmatrix(ref_kp, ref_desc, ref_triangulation)
+    knn_test = triang2vec.asmatrix(query_kp, query_desc, query_triangulation)
 
     print('Plotting')
     img1 = draw_triangulation(ref_img, ref_kp, ref_triangulation)
