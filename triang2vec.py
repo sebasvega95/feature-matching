@@ -4,7 +4,7 @@ PERMS = [[(0, 0), (1, 1), (2, 2)], [(0, 0), (1, 2), (2, 1)],
          [(0, 1), (1, 0), (2, 2)], [(0, 1), (1, 2), (2, 0)],
          [(0, 2), (1, 0), (2, 1)], [(0, 2), (1, 1), (2, 0)]]
 
-TRIANG_TO_P = [(0, 1), (2, 3), (4, 5)]
+TRIANG_TO_POINT_IDX = [(0, 1), (2, 3), (4, 5)]
 
 
 def angle(p, i):
@@ -23,7 +23,7 @@ def dist_angles(p, q, idx1, idx2, idx3):
 
 
 def oposite_side(p, i):
-    return np.linalg.norm(np.subtract(p[(i + 1) % 3], p[(i + 2) % 3]))
+    return np.linalg.norm(p[(i + 1) % 3] - p[(i + 2) % 3])
 
 
 def dist_ratios(p, q, idx1, idx2, idx3):
@@ -45,13 +45,16 @@ def dist_desc(dp, dq, idx1, idx2, idx3):
             np.linalg.norm(np.subtract(dp[i3], dq[j3]))) / 3
 
 
+def unroll(triang):
+    point = triang[:6]
+    point = [np.array([point[i], point[j]]) for i, j in TRIANG_TO_POINT_IDX]
+    descriptor = triang[6:]
+    return point, descriptor
+
+
 def distance(triang1, triang2):
-    p = triang1[:6]
-    p = [np.array([p[i], p[j]]) for i, j in TRIANG_TO_P]
-    dp = triang1[6:]
-    q = triang2[:6]
-    q = [np.array([q[i], q[j]]) for i, j in TRIANG_TO_P]
-    dq = triang2[6:]
+    p, dp = unroll(triang1)
+    q, dq = unroll(triang2)
     min_dist = float('inf')
     for idx in PERMS:
         dist_vec = [
