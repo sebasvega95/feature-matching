@@ -9,8 +9,8 @@ specifically the [book covers](http://web.cs.wpi.edu/~claypool/mmsys-dataset/201
 Create the virtual environment
 
 ```bash
-  sudo apt-get install python3-venv
-  python3 -m venv env
+  sudo apt install python-virtualenv
+  virtualenv -p /usr/bin/python3 env
 ```
 
 Install dependencies
