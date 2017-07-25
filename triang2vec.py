@@ -4,7 +4,7 @@ PERMS = [[(0, 0), (1, 1), (2, 2)], [(0, 0), (1, 2), (2, 1)],
          [(0, 1), (1, 0), (2, 2)], [(0, 1), (1, 2), (2, 0)],
          [(0, 2), (1, 0), (2, 1)], [(0, 2), (1, 1), (2, 0)]]
 
-# TRIANG_TO_POINT_IDX = [(0, 1), (2, 3), (4, 5)]
+TRIANG_TO_POINT_IDX = [(0, 1), (2, 3), (4, 5)]
 
 # def unroll(triang):
 #     point = triang[:6]
@@ -24,32 +24,69 @@ PERMS = [[(0, 0), (1, 1), (2, 2)], [(0, 0), (1, 2), (2, 1)],
 #     return triangles
 
 
-class TriangulationMatrix:
+class KeyPointMapper:
     '''
-    Represents a triangulation of a set of keypoints in a convenient way to
-    calculate the proposed distance between triangles.
+    Represents two triangulations of keypoints in a convenient way to calculate
+    the proposed distance between triangles.
     '''
 
-    def __init__(self, keypoints, descriptors, triangulation):
+    def __init__(self, keypoints, descriptors):
+        '''
+        Stores the necessary data for indexing descriptors and indices by
+        keypoints.
+
+        Parameters
+        ----------
+        keypoints: list of KeyPoint
+            Keypoints detected by SURF.
+        descriptors: ndarray
+            Corresponding descriptors to the keypoints.
+        '''
+        self._mapper = {}
+        for i, (kp, desc) in enumerate(zip(keypoints, descriptors)):
+            self._mapper[kp.pt] = {}
+            self._mapper[kp.pt]['descriptor'] = desc
+            self._mapper[kp.pt]['index'] = i
+
+    def search(self, keypoint):
+        '''
+        Returns the index in the image and the descriptor corresponding to a
+        keypoint
+
+        Parameters
+        ----------
+        keypoint: tuple (int, int)
+            Keypoint to search.
+        Returns
+        -------
+        index: int
+            Index of the keypoint in the image.
+        descriptor: ndarray
+            Corresponding descriptors to the keypoint.
+        '''
+        index = self._mapper[kp.pt]['index']
+        descriptor = self._mapper[kp.pt]['descriptor']
+        return index, descriptor
+
+
+class TriangleDistance:
+    '''
+    Class to that contains the necessary data and methods for calculating the
+    proposed distance between two triangles.
+    '''
+
+    def __init__(self, mapper1, mapper2):
         '''
         Stores the necessary data for calculating distances.
 
         Parameters
         ----------
-        keypoints: list
-            Keypoints detected by SURF.
-        descriptors: list
-            Corresponding descriptors to the keypoints found.
-        triangulation: ndarray
-            Delaunay triangulation of keypoints as a matrix, where each row
-            denotes a triangle and each column the indices in the keypoints
-            list that form said triangle.
+        mapper#: KeyPointMapper
+            Maps keypoints to descriptors and indices in an image.
         '''
-        self.keypoints = keypoints
-        self.descriptors = descriptors
-        self.triangulation = triangulation
+        self.mapper = (mapper1, mapper2)
 
-    def distance(self, triang1, triang2):
+    def __call__(self, triang1, triang2):
         '''
         Calculates the proposed distance between two triangles. This distance is
         the L2-norm of a vector whose components are the three distances
@@ -70,20 +107,20 @@ class TriangulationMatrix:
         dist: float
             Proposed distance between the triangles.
         '''
-        p, dp = _unroll(triang1)
-        q, dq = _unroll(triang2)
+        p, dp = self._unroll(triang1, 0)
+        q, dq = self._unroll(triang2, 1)
         dist = float('inf')
         for idx in PERMS:
             dist_vec = [
-                _dist_angles(p, q, *idx),
-                _dist_ratios(p, q, *idx),
-                _dist_desc(dp, dq, *idx)
+                self._dist_angles(p, q, *idx),
+                self._dist_ratios(p, q, *idx),
+                self._dist_desc(dp, dq, *idx)
             ]
             _dist = np.linalg.norm(dist_vec)
             dist = _dist if _dist < dist else dist
         return dist
 
-    def _unroll(self, triangle):
+    def _unroll(self, triangle, which):
         '''
         Takes the indices of the points that make up a triangle and returns the
         corresponding keypoints and descriptors.
@@ -92,16 +129,23 @@ class TriangulationMatrix:
         ----------
         triangle: ndarray
             Triangle as the indices of the points that make it.
+        which: int
+            0 if the triangle is from the first image, 1 otherwise
 
         Returns
         -------
-        points: list
+        points: list of ndarray
             A list of the (x, y) coordinates of the points.
-        descriptors: list
+        descriptors: list of ndarray
             A list of the SURF descriptors of the points.
         '''
-        points = [np.array(self.keypoints[i].pt) for i in triangle]
-        descriptors = [np.array(self.descriptors[i]) for i in triangle]
+        idx = triangle.tolist()
+        print(idx)
+        points = [triangle[[i, j]] for i, j in TRIANG_TO_POINT_IDX]
+        descriptors = [
+            self._mapper[which].search(triangle[i], triangle[j])
+            for p in TRIANG_TO_POINT_IDX
+        ]
         return points, descriptors
 
     def _angle(p, i):
@@ -110,7 +154,7 @@ class TriangulationMatrix:
 
         Parameters
         ----------
-        p: list
+        p: list of ndarray
             A list of the (x, y) coordinates of the points.
         i: int
             Index of the point whose angle is to be returned.
@@ -132,9 +176,9 @@ class TriangulationMatrix:
 
         Parameters
         ----------
-        p: list
+        p: list of ndarray
             A list of the (x, y) coordinates of the points of a triangle.
-        q: list
+        q: list of ndarray
             A list of the (x, y) coordinates of the points of a triangle.
         idx#: tuple
             Indices of the matched-up points between the triangles.
@@ -157,7 +201,7 @@ class TriangulationMatrix:
 
         Parameters
         ----------
-        p: list
+        p: list of ndarray
             A list of the (x, y) coordinates of the points.
         i: int
             Index of the point whose angle is to be returned.
@@ -176,11 +220,11 @@ class TriangulationMatrix:
 
         Parameters
         ----------
-        p: list
+        p: list of ndarray
             A list of the (x, y) coordinates of the points of a triangle.
-        q: list
+        q: list of ndarray
             A list of the (x, y) coordinates of the points of a triangle.
-        idx#: tuple
+        idx#: tuple (int, int)
             Indices of the matched-up points between the triangles.
 
         Returns
@@ -191,9 +235,9 @@ class TriangulationMatrix:
         i1, j1 = idx1
         i2, j2 = idx2
         i3, j3 = idx3
-        R1 = _oposite_side(p, i1) / _oposite_side(q, j1)
-        R2 = _oposite_side(p, i2) / _oposite_side(q, j2)
-        R3 = _oposite_side(p, i3) / _oposite_side(q, j3)
+        R1 = self._oposite_side(p, i1) / self._oposite_side(q, j1)
+        R2 = self._oposite_side(p, i2) / self._oposite_side(q, j2)
+        R3 = self._oposite_side(p, i3) / self._oposite_side(q, j3)
         return np.std([R1, R2, R3])
 
     def _dist_desc(dp, dq, idx1, idx2, idx3):
@@ -203,9 +247,9 @@ class TriangulationMatrix:
 
         Parameters
         ----------
-        dp: list
+        dp: list of ndarray
             A list of the SURF descriptors of the points of a triangle.
-        dq: list
+        dq: list of ndarray
             A list of the SURF descriptors of the points of a triangle.
         idx#: tuple
             Indices of the matched-up points between the triangles.
