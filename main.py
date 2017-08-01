@@ -9,16 +9,42 @@ from kpmap import KeyPointMapper
 from sklearn.neighbors import NearestNeighbors
 from time import time
 
+DIST_THRESHOLD = 0.3
+
+
+def point_match(knn_train, knn_test, indices, distances, ref_mapper,
+                query_mapper):
+    matches_set = set()
+    matches = []
+    for query_idx, (ref_idx, dist) in enumerate(zip(indices, distances)):
+        if dist > DIST_THRESHOLD:
+            continue
+        ref_triang = knn_train[ref_idx, :]
+        ref_points, _ = triang2vec.unroll(ref_triang)
+        query_triang = knn_test[query_idx, :]
+        query_points, _ = triang2vec.unroll(query_triang)
+        alignment = triang2vec.best_point_alignment(ref_triang, query_triang)
+        for i, j in alignment:
+            ref_pt = tuple(ref_points[i])
+            query_pt = tuple(query_points[j])
+            ref_pt_idx = ref_mapper.search(ref_pt)
+            query_pt_idx = query_mapper.search(query_pt)
+            if (ref_pt_idx, query_pt_idx) not in matches_set:
+                matches_set.add((ref_pt_idx, query_pt_idx))
+                matches.append(cv2.DMatch(ref_pt_idx, query_pt_idx, dist))
+    return matches
+
+
 if __name__ == '__main__':
     print('Opening images')
-    ref_img = cv2.imread('book_covers/Reference/001.jpg')
-    query_img = cv2.imread('book_covers/Droid/001.jpg')
+    ref_img = cv2.imread('test-images/monster1s.JPG')
+    query_img = cv2.imread('test-images/monster1s.JPG')
     ref_gray = cv2.cvtColor(ref_img, cv2.COLOR_BGR2GRAY)
     query_gray = cv2.cvtColor(query_img, cv2.COLOR_BGR2GRAY)
 
     print('Extracting features')
-    ref_kp, ref_desc = get_features(ref_gray, num_keypoints=20)
-    query_kp, query_desc = get_features(query_gray, num_keypoints=20)
+    ref_kp, ref_desc = get_features(ref_gray, num_keypoints=100)
+    query_kp, query_desc = get_features(query_gray, num_keypoints=100)
     ref_mapper = KeyPointMapper(ref_kp)
     query_mapper = KeyPointMapper(query_kp)
 
@@ -39,44 +65,17 @@ if __name__ == '__main__':
     end = time()
     print('\tMatching done in', timedelta(seconds=end - start))
 
-    # print('Lowe\'s ratio test')
-    # good = []
-    # num_matches = indices.shape[0]
-    # print('Num. matches before:', num_matches)
-    # ratio = 0.8
-    # for i in range(num_matches):
-    #     m_dist, n_dist = distances[i, :]
-    #     if m_dist < ratio * n_dist:
-    #         good.append([i, indices[i, 0]])
-    # print('Num. matches after: ', len(good))
+    distances = distances.reshape(-1)
+    indices = indices.reshape(-1)
 
     print('Point matching')
     start = time()
-    matches_set = set()
-    matches = []
-    print(len(ref_kp), len(query_kp))
-    for query_idx, (ref_idx, dist) in enumerate(zip(indices, distances)):
-        ref_idx = ref_idx[0]
-        ref_triang = knn_train[ref_idx, :]
-        ref_points, _ = triang2vec.unroll(ref_triang)
-        query_triang = knn_test[query_idx, :]
-        query_points, _ = triang2vec.unroll(query_triang)
-        alignment = triang2vec.best_point_alignment(ref_triang, query_triang)
-        for i, j in alignment:
-            ref_pt = tuple(ref_points[i])
-            query_pt = tuple(query_points[j])
-            ref_pt_idx = ref_mapper.search(ref_pt)
-            query_pt_idx = query_mapper.search(query_pt)
-            if (ref_pt_idx, query_pt_idx) not in matches_set:
-                matches_set.add((ref_pt_idx, query_pt_idx))
-                matches.append(cv2.DMatch(ref_pt_idx, query_pt_idx, dist))
-                # matches.append(
-                #     cv2.DMatch(
-                #         _queryIdx=query_pt_idx,
-                #         _trainIdx=ref_pt_idx,
-                #         _distance=dist))
+    matches = point_match(knn_train, knn_test, indices, distances, ref_mapper,
+                          query_mapper)
     end = time()
     print('\tMatching done in', timedelta(seconds=end - start))
+    print('\tNum. matches:', len(matches))
+
     img_matches = cv2.drawMatches(
         ref_img, ref_kp, query_img, query_kp, matches, None, flags=2)
     plt.imshow(cv2.cvtColor(img_matches, cv2.COLOR_BGR2RGB))
