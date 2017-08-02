@@ -11,12 +11,12 @@ TRIANG_POINT_IDX = [0, 2, 4]
 
 def distance(triang1, triang2):
     '''
-        Calculates the proposed distance between two triangles. This distance is
-        the L2-norm of a vector whose components are the three distances
-        described in the methods _dist_angles, _dist_ratios and _dist_desc. Note
-        that there are six different ways of matching-up the points in the
-        triangles when comparing them, so we take the configuration that has the
-        smallest distance.
+        Calculates the proposed distance between two triangles. This distance
+        is the L2-norm of a vector whose components are the three distances
+        described in the methods _dist_angles, _dist_ratios and _dist_desc.
+        Note that there are six different ways of matching-up the points in the
+        triangles when comparing them, so we take the configuration that has
+        the smallest distance.
 
         Parameters
         ----------
@@ -243,8 +243,8 @@ def asmatrix(keypoints, descriptors, triangulation):
         Keypoints coordinates and descriptors as a matrix. Each row is a
         triangle. Columns are arranged as follows:
             pt1.pos pt2.pos pt3.pos pt1.desc pt2.desc pt3.desc
-        Where pt# indicates the three points of a triangle. pos means the (x, y)
-        coordinates of each point in the image. desc denotes the 64-dim
+        Where pt# indicates the three points of a triangle. pos means the
+        (x, y) coordinates of each point in the image. desc denotes the 64-dim
         descriptor vector. So the number of columns of the matrix is
             3 * 2 + 3 * 64 = 198
     '''

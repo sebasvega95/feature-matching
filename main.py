@@ -14,6 +14,33 @@ MIN_MATCH_COUNT = 10
 
 def point_match(knn_train, knn_test, indices, distances, ref_mapper,
                 query_mapper):
+    '''
+    Finds a point match given the triangle matches. This function aligns the
+    points in the triangle so that the distance between the triangles matches
+    the one in the distances vector.
+
+    Parameters
+    ----------
+    knn_train, knn_test: ndarray
+        Keypoints coordinates and descriptors as a matrix.
+    indices:
+        Indices of the nearest triangles in the train matrix. This is,
+        indices[i] is the index of the triangle in knn_train closest to the
+        i-th triangle in knn_test.
+    distances: ndarray
+        Distance between the triangles.
+    ref_mapper, query_mapper: KeyPointMapper
+        Mapping between the points and their indices in the images.
+
+    Returns
+    -------
+    matches: list of DMatch
+        Match between the points.
+    src_pts: ndarray
+        Coordinates of matched points in reference image.
+    dst_pts: ndarray
+        Coordinates of matched points in query image.
+    '''
     matches_set = set()
     matches = []
     src_pts = []
