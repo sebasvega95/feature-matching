@@ -1,21 +1,23 @@
-#!env/bin/python
 import cv2
 import matplotlib.pyplot as plt
+import numpy as np
 import triang2vec
 from datetime import timedelta
-from draw import draw_triangulation
 from features import get_features, get_triangulation
 from kpmap import KeyPointMapper
 from sklearn.neighbors import NearestNeighbors
 from time import time
 
 DIST_THRESHOLD = 0.3
+MIN_MATCH_COUNT = 10
 
 
 def point_match(knn_train, knn_test, indices, distances, ref_mapper,
                 query_mapper):
     matches_set = set()
     matches = []
+    src_pts = []
+    dst_pts = []
     for query_idx, (ref_idx, dist) in enumerate(zip(indices, distances)):
         if dist > DIST_THRESHOLD:
             continue
@@ -32,23 +34,27 @@ def point_match(knn_train, knn_test, indices, distances, ref_mapper,
             if (ref_pt_idx, query_pt_idx) not in matches_set:
                 matches_set.add((ref_pt_idx, query_pt_idx))
                 matches.append(cv2.DMatch(ref_pt_idx, query_pt_idx, dist))
-    return matches
+                src_pts.append(ref_pt)
+                dst_pts.append(query_pt)
+    return matches, np.array(src_pts), np.array(dst_pts)
 
 
 if __name__ == '__main__':
     print('Opening images')
     ref_img = cv2.imread('test-images/monster1s.JPG')
-    query_img = cv2.imread('test-images/monster1s.JPG')
+    query_img = cv2.imread('test-images/monster1s.rot.JPG')
     ref_gray = cv2.cvtColor(ref_img, cv2.COLOR_BGR2GRAY)
     query_gray = cv2.cvtColor(query_img, cv2.COLOR_BGR2GRAY)
 
     print('Extracting features')
-    ref_kp, ref_desc = get_features(ref_gray, num_keypoints=100)
-    query_kp, query_desc = get_features(query_gray, num_keypoints=100)
+    num_kp = 20
+    print('\tNum. keypoints:', num_kp)
+    ref_kp, ref_desc = get_features(ref_gray, num_keypoints=num_kp)
+    query_kp, query_desc = get_features(query_gray, num_keypoints=num_kp)
     ref_mapper = KeyPointMapper(ref_kp)
     query_mapper = KeyPointMapper(query_kp)
 
-    print('Calculating Triangulation')
+    print('Calculating triangulation')
     ref_triangulation = get_triangulation(ref_kp)
     query_triangulation = get_triangulation(query_kp)
 
@@ -65,18 +71,32 @@ if __name__ == '__main__':
     end = time()
     print('\tMatching done in', timedelta(seconds=end - start))
 
-    distances = distances.reshape(-1)
-    indices = indices.reshape(-1)
+    distances = distances.ravel()
+    indices = indices.ravel()
 
     print('Point matching')
-    start = time()
-    matches = point_match(knn_train, knn_test, indices, distances, ref_mapper,
-                          query_mapper)
-    end = time()
-    print('\tMatching done in', timedelta(seconds=end - start))
+    matches, src_pts, dst_pts = point_match(
+        knn_train, knn_test, indices, distances, ref_mapper, query_mapper)
     print('\tNum. matches:', len(matches))
 
+    if len(matches) >= MIN_MATCH_COUNT:
+        print('Finding homography')
+        M, mask = cv2.findHomography(src_pts, dst_pts, cv2.RANSAC, 5.0)
+        mask = mask.ravel()
+        print('\tInliers: {:.3f}%'.format(np.sum(mask) / len(matches) * 100))
+        mask = mask.tolist()
+    else:
+        print('Not enough matches were found')
+        mask = None
+
     img_matches = cv2.drawMatches(
-        ref_img, ref_kp, query_img, query_kp, matches, None, flags=2)
+        ref_img,
+        ref_kp,
+        query_img,
+        query_kp,
+        matches,
+        None,
+        flags=2,
+        matchesMask=mask)
     plt.imshow(cv2.cvtColor(img_matches, cv2.COLOR_BGR2RGB))
     plt.show()
