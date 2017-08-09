@@ -1,7 +1,7 @@
 import cv2
 import numpy as np
-from feature_matching import get_features
 
+HESSIAN_THRESHOLD = 400
 FLANN_INDEX_KDTREE = 0
 
 
@@ -28,8 +28,14 @@ def test_surfmatch(ref_img, query_img, num_kp=20, min_match=10):
         The ratio between the number of point matches inside the homography and
         the total number of matches.
     '''
-    ref_kp, ref_desc = get_features(ref_img, num_keypoints=num_kp)
-    query_kp, query_desc = get_features(query_img, num_keypoints=num_kp)
+    surf = cv2.xfeatures2d.SURF_create(HESSIAN_THRESHOLD)
+
+    ref_kp, ref_desc = surf.detectAndCompute(ref_img, None)
+    query_kp, query_desc = surf.detectAndCompute(query_img, None)
+    ref_kp = ref_kp[:num_kp]
+    ref_desc = ref_desc[:num_kp]
+    query_kp = query_kp[:num_kp]
+    query_desc = query_desc[:num_kp]
 
     index_params = {'algorithm': FLANN_INDEX_KDTREE, 'trees': 5}
     search_params = {'checks': 50}
