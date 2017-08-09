@@ -18,5 +18,5 @@ Install dependencies
 ## Run
 
 ```bash
-  (env)$ python main.py
+  (env)$ python feature_matching.py
 ```
