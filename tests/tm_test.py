@@ -1,6 +1,6 @@
-from feature_matching import TBMatcher, get_features
 import cv2
 import numpy as np
+from feature_matching import TBMatcher, get_features
 
 
 def test_tbmatch(ref_img, query_img, num_kp=20, min_match=10):
