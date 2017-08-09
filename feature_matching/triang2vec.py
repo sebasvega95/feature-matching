@@ -9,7 +9,7 @@ TRIANG_DESC_IDX = [6, 70, 134]
 TRIANG_POINT_IDX = [0, 2, 4]
 
 
-def distance(triang1, triang2):
+def triang_distance(triang1, triang2):
     '''
         Calculates the proposed distance between two triangles. This distance
         is the L2-norm of a vector whose components are the three distances
@@ -221,7 +221,7 @@ def dist_desc(dp, dq, idx1, idx2, idx3):
             np.linalg.norm(dp[i3] - dq[j3])) / 3
 
 
-def asmatrix(keypoints, descriptors, triangulation):
+def triang_matrix(keypoints, descriptors, triangulation):
     '''
     Represents two triangulations of keypoints in a convenient way to calculate
     the proposed distance between triangles.

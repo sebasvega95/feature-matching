@@ -24,13 +24,14 @@ class KeyPointMapper:
 
         Parameters
         ----------
-        keypoint: tuple (int, int)
+        keypoint: type convertible to tuple (int, int)
             Keypoint to search.
         Returns
         -------
         index: int
             Index of the keypoint in the image, or -1 if it's not found.
         '''
+        keypoint = tuple(keypoint)
         try:
             index = self._mapper[keypoint]
         except KeyError:
