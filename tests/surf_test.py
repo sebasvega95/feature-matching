@@ -5,7 +5,7 @@ HESSIAN_THRESHOLD = 400
 FLANN_INDEX_KDTREE = 0
 
 
-def test_surfmatch(ref_img, query_img, num_kp=20, min_match=10):
+def test_surfmatch(ref_img, query_img, num_kp=None, min_match=10):
     '''
     Tests the SURF matcher by finding an homography and counting the
     percentage of inliers in said homography.
@@ -16,8 +16,8 @@ def test_surfmatch(ref_img, query_img, num_kp=20, min_match=10):
         Reference image, must have just one channel (greyscale).
     query_img: ndarray
         Query image, must have just one channel (greyscale).
-    num_kp: int
-        Number of keypoints to extract
+    num_kp: int or None
+        Number of keypoints to extract, None if all that are found.
     min_match: int
         Minimum number of point matches to be considered as valid for
         constructing the homography.
@@ -27,6 +27,8 @@ def test_surfmatch(ref_img, query_img, num_kp=20, min_match=10):
     inliers: float
         The ratio between the number of point matches inside the homography and
         the total number of matches.
+    num_kp_found: tuple (int, int)
+        Number of keypoints found in both images.
     '''
     surf = cv2.xfeatures2d.SURF_create(HESSIAN_THRESHOLD)
 
@@ -36,6 +38,7 @@ def test_surfmatch(ref_img, query_img, num_kp=20, min_match=10):
     ref_desc = ref_desc[:num_kp]
     query_kp = query_kp[:num_kp]
     query_desc = query_desc[:num_kp]
+    num_kp_found = (len(ref_kp), len(query_kp))
 
     index_params = {'algorithm': FLANN_INDEX_KDTREE, 'trees': 5}
     search_params = {'checks': 50}
@@ -53,4 +56,5 @@ def test_surfmatch(ref_img, query_img, num_kp=20, min_match=10):
         mask = mask.ravel()
     else:
         raise ValueError('Not enough matches were found')
-    return np.sum(mask) / len(good)
+    inliers = np.sum(mask) / len(good)
+    return inliers, num_kp_found
