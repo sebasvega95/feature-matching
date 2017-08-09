@@ -32,7 +32,7 @@ class TBMatcher:
         Coordinates of matched points in query image.
     '''
 
-    def __init__(self, dist_threshold=0.3):
+    def __init__(self, dist_threshold=0.2):
         '''
         Sets the dist_threshold if passed as input, and initializes the
         coordinates of the points to be matched as empty lists.

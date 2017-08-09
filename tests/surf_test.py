@@ -47,4 +47,4 @@ def test_surfmatch(ref_img, query_img, num_kp=20, min_match=10):
         mask = mask.ravel()
     else:
         raise ValueError('Not enough matches were found')
-    return np.sum(mask) / len(matches)
+    return np.sum(mask) / len(good)
